@@ -28,6 +28,7 @@ namespace GameServer
             _listener = new TcpListener(ip, port);
         }
 
+
         public async Task StartAsync()
         {
             _listener.Start();
@@ -53,6 +54,81 @@ namespace GameServer
             _sessions.TryRemove(sessionId, out _);
             Console.WriteLine($"Client {sessionId} removed");
         }
+        public async Task BroadcastMoveAsync(int fromSessionId, CSMOVE move)
+        {
+            var scMove = new SCMOVE
+            {
+                PlayerId = fromSessionId,
+                X = move.X,
+                Y = move.Y,
+                Z = move.Z
+            };
+
+            // 여기서 내 위치 저장
+            _sessions[fromSessionId].Player.X = move.X;
+            _sessions[fromSessionId].Player.Y = move.Y;
+            _sessions[fromSessionId].Player.Z = move.Z;
+
+            foreach (var kv in _sessions)
+            {
+                ClientSession session = kv.Value;
+                if (false == kv.Value.Player.InGame) continue;
+                if (kv.Key == fromSessionId) 
+                    continue;
+                await session.SendMoveAsync(scMove);
+            }
+        }
+        public async Task BroadcastDespawnAsync(int SessionId)
+        {
+            var scDespawn = new SCDESPWNPLAYER
+            {
+                PlayerId = SessionId,
+            };
+
+            foreach (var kv in _sessions)
+            {
+                ClientSession session = kv.Value;
+                if (false == kv.Value.Player.InGame) continue;
+                if (kv.Key == SessionId) continue;
+                await session.SendDespawnAsync(scDespawn);
+            }
+
+            RemoveSession(SessionId);
+        }
+        public async Task BroadcastSpawnAsync(ClientSession newSession)
+        {
+            var newPlayer = newSession.Player;
+            // 1) 기존 플레이어들을 새로 접속한 클라이언트에게 전송
+            foreach (var kv in _sessions)
+            {
+                ClientSession session = kv.Value;
+                if (session.Player.InGame == false) continue;
+                if (session == newSession) continue;
+                var scSpawn = new SCSPAWNPLAYER
+                {
+                    PlayerId = session.Player.Id,
+                    X = session.Player.X,
+                    Y = session.Player.Y,
+                    Z = session.Player.Z
+                };
+                await newSession.SendSpawnAsync(scSpawn);
+            }
+            // 2) 새로 접속한 플레이어를 기존 클라이언트들에게 전송
+            var scSpawnNew = new SCSPAWNPLAYER
+            {
+                PlayerId = newPlayer.Id,
+                X = newPlayer.X,
+                Y = newPlayer.Y,
+                Z = newPlayer.Z
+            };
+            foreach (var kv in _sessions)
+            {
+                ClientSession session = kv.Value;
+                if (session.Player.InGame == false) continue;
+                if (session == newSession) continue;
+                await session.SendSpawnAsync(scSpawnNew);
+            }
+        }
     }
 
     public class ClientSession
@@ -61,6 +137,8 @@ namespace GameServer
         private readonly TcpClient _client;
         private readonly Server _server;
         private readonly NetworkStream _stream;
+
+        public Player Player { get; private set; }
 
         public ClientSession(int sessionId, TcpClient client, Server server)
         {
@@ -139,15 +217,25 @@ namespace GameServer
                     {
                         string name = (string)msg;
                         Console.WriteLine($"[CS_LOGIN] session:{_sessionId}, name:{name}");
-                        // TODO: 로그인 처리 + SC_LOGIN_RESULT 보내기
                         break;
                     }
 
-                case PacketId.CS_CHAT:
+                case PacketId.CS_JOIN_GAME:
                     {
-                        string chat = (string)msg;
-                        Console.WriteLine($"[CS_CHAT] {_sessionId}: {chat}");
-                        // TODO: 나중에 Server.BroadcastChat 같은 거 호출
+                        string name = (string)msg;
+                        Console.WriteLine($"[CS_JOIN_GAME] session:{_sessionId}, name:{name}");
+
+                        Player.JoinGame(); // 초기 세팅
+                        await _server.BroadcastSpawnAsync(this); // 브로드캐스트
+
+                        break;
+                    }
+
+                case PacketId.CS_LEAVE_GAME:
+                    {
+                        Console.WriteLine($"[CS_LEAVE_GAME] session:{_sessionId}");
+
+                        await _server.BroadcastDespawnAsync(_sessionId);
                         break;
                     }
 
@@ -155,6 +243,8 @@ namespace GameServer
                     {
                         CSMOVE move = (CSMOVE)msg;
                         Console.WriteLine($"[CS_MOVE] {_sessionId} -> ({move.X}, {move.Y}, {move.Z})");
+
+                        await _server.BroadcastMoveAsync(_sessionId, move);
                         break;
                     }
 
@@ -164,11 +254,22 @@ namespace GameServer
             }
         }
 
-        // 공통: 패킷 전송 — 이제 body 대신 payload(object)를 넣으면 됨
+
+
         private async Task SendPacketAsync(PacketId id, object payload)
         {
             byte[] packet = Protocol.Encode(id, payload);
             await _stream.WriteAsync(packet, 0, packet.Length);
         }
+        
+        // 패킷 전송 메소드 ... 
+        public Task SendMoveAsync(SCMOVE move)
+        => SendPacketAsync(PacketId.SC_MOVE, move);
+
+        public Task SendDespawnAsync(SCDESPWNPLAYER despawn)
+        => SendPacketAsync(PacketId.SC_DESPAWN_PLAYER, despawn);
+
+        public Task SendSpawnAsync(SCSPAWNPLAYER spawn)
+        => SendPacketAsync(PacketId.SC_SPAWN_PLAYER, spawn);
     }
 }
