@@ -222,9 +222,10 @@ namespace GameServer
 
                 case PacketId.CS_JOIN_GAME:
                     {
-                        string name = (string)msg;
+                        string name = ((CSJOINGAME)msg).PlayerName;
                         Console.WriteLine($"[CS_JOIN_GAME] session:{_sessionId}, name:{name}");
 
+                        Player = new Player( _sessionId, name );
                         Player.JoinGame(); // 초기 세팅
                         await _server.BroadcastSpawnAsync(this); // 브로드캐스트
 

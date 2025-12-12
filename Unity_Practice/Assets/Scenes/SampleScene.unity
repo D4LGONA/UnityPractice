@@ -122,6 +122,54 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &405985669
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 405985670}
+  - component: {fileID: 405985671}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &405985670
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 405985669}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 404.84824, y: 18.413797, z: 987.8984}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &405985671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 405985669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd4719f89e4e4cb48b154216a5055d82, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ServerIp: 127.0.0.1
+  ServerPort: 7777
+  remotePrefab: {fileID: 5876461459138025522, guid: 04703831f5809884b817b3f82bc474cf, type: 3}
+  MyPlayer: {fileID: 636156172}
 --- !u!1 &636156172 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5876461459138025522, guid: ee22ac49df0b1914096baa08db8fbd45, type: 3}
@@ -148,20 +196,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1707634157942254818, guid: ee22ac49df0b1914096baa08db8fbd45, type: 3}
   m_PrefabInstance: {fileID: 3299262559907756541}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &636156179
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 636156172}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cd4719f89e4e4cb48b154216a5055d82, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ServerIp: 127.0.0.1
-  ServerPort: 7777
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -554,9 +588,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5876461459138025522, guid: ee22ac49df0b1914096baa08db8fbd45, type: 3}
       insertIndex: -1
       addedObject: {fileID: 636156173}
-    - targetCorrespondingSourceObject: {fileID: 5876461459138025522, guid: ee22ac49df0b1914096baa08db8fbd45, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 636156179}
   m_SourcePrefab: {fileID: 100100000, guid: ee22ac49df0b1914096baa08db8fbd45, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
@@ -566,3 +597,4 @@ SceneRoots:
   - {fileID: 1600081059}
   - {fileID: 1838704657}
   - {fileID: 3299262559907756541}
+  - {fileID: 405985670}
