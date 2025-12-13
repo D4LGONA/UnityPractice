@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using PacketProtocol;
 
 namespace GameServer
 {
@@ -129,6 +130,22 @@ namespace GameServer
                 await session.SendSpawnAsync(scSpawnNew);
             }
         }
+
+        public async Task BroadcastChatting(int fromSessionID, CSCHAT chat)
+        {
+            var scChat = new SCCHAT
+            {
+                PlayerId = fromSessionID,
+                Msg = chat.Msg
+            };
+            foreach (var kv in _sessions)
+            {
+                ClientSession session = kv.Value;
+                if (false == kv.Value.Player.InGame) continue;
+                if (kv.Key == fromSessionID) continue;
+                await session.SendChatAsync(scChat);
+            }
+        }
     }
 
     public class ClientSession
@@ -227,6 +244,14 @@ namespace GameServer
 
                         Player = new Player( _sessionId, name );
                         Player.JoinGame(); // 초기 세팅
+                        SCLOGINRESULT loginResult = new SCLOGINRESULT
+                        {
+                            PlayerId = _sessionId,
+                            X = Player.X,
+                            Y = Player.Y,
+                            Z = Player.Z
+                        };
+                        await SendPacketAsync(PacketId.SC_LOGIN_RESULT, loginResult); // 로그인 결과 전송
                         await _server.BroadcastSpawnAsync(this); // 브로드캐스트
 
                         break;
@@ -246,6 +271,15 @@ namespace GameServer
                         Console.WriteLine($"[CS_MOVE] {_sessionId} -> ({move.X}, {move.Y}, {move.Z})");
 
                         await _server.BroadcastMoveAsync(_sessionId, move);
+                        break;
+                    }
+
+                case PacketId.CS_CHAT:
+                    {
+                        CSCHAT chat = (CSCHAT)msg;
+                        Console.WriteLine($"[CS_CHAT] session:{_sessionId}, msg:{chat.Msg}");
+
+                        await _server.BroadcastChatting(_sessionId, chat);
                         break;
                     }
 
@@ -272,5 +306,8 @@ namespace GameServer
 
         public Task SendSpawnAsync(SCSPAWNPLAYER spawn)
         => SendPacketAsync(PacketId.SC_SPAWN_PLAYER, spawn);
+
+        public Task SendChatAsync(SCCHAT chat)
+        => SendPacketAsync(PacketId.SC_CHAT, chat);
     }
 }

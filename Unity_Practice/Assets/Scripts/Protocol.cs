@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace GameClient
+namespace PacketProtocol
 {
     // 패킷 ID (1바이트)
     public enum PacketId : byte
@@ -59,10 +59,22 @@ namespace GameClient
         public float Z;
     }
 
-    public struct  SCDESPWNPLAYER
+    public struct SCDESPWNPLAYER
     {
         public int PlayerId;
     }
+
+    public struct CSCHAT
+    {
+        public string Msg;
+    }
+
+    public struct SCCHAT
+    {
+        public int PlayerId;
+        public string Msg;
+    }
+
 
     // 프로토콜 인코더/디코더 
     public static class Protocol
@@ -100,6 +112,17 @@ namespace GameClient
                 case PacketId.SC_DESPAWN_PLAYER:
                     body = Encode_SCDESPWNPLAYER((SCDESPWNPLAYER)payload);
                     break;
+
+                case PacketId.SC_CHAT:
+                    body = Encode_SCCHAT((SCCHAT)payload);
+                    break;
+                case PacketId.CS_CHAT:
+                    body = Encode_CSCHAT((CSCHAT)payload);
+                    break;
+                case PacketId.SC_LOGIN_RESULT:
+                    body = Encode_SCLOGINRESULT((SCLOGINRESULT)payload);
+                    break;
+
 
                 default:
                     throw new ArgumentException($"Unknown packet id in Encode: {id}");
@@ -139,12 +162,46 @@ namespace GameClient
                 case PacketId.SC_DESPAWN_PLAYER:
                     return Decode_SCDESPWNPLAYER(body);
 
+                case PacketId.CS_CHAT:
+                    return Decode_CSCHAT(body);
+
+                case PacketId.SC_CHAT:
+                    return Decode_SCCHAT(body);
+                case PacketId.SC_LOGIN_RESULT:
+                    return Decode_SCLOGINRESULT(body);
+
+
                 default:
                     throw new ArgumentException($"Unknown packet id in Decode: {id}");
             }
         }
 
         // Encode / Decode 함수 구현
+        static byte[] EncodeString(string s)
+        {
+            s ??= "";
+            byte[] bytes = Encoding.UTF8.GetBytes(s);
+            if (bytes.Length > ushort.MaxValue) throw new ArgumentException("string too long");
+
+            byte[] body = new byte[2 + bytes.Length];
+            body[0] = (byte)(bytes.Length & 0xFF);
+            body[1] = (byte)((bytes.Length >> 8) & 0xFF);
+            Buffer.BlockCopy(bytes, 0, body, 2, bytes.Length);
+            return body;
+        }
+
+        static string DecodeString(byte[] body, ref int offset)
+        {
+            if (offset + 2 > body.Length) throw new ArgumentException("bad string header");
+            ushort len = (ushort)(body[offset] | (body[offset + 1] << 8));
+            offset += 2;
+            if (offset + len > body.Length) throw new ArgumentException("bad string len");
+
+            string s = Encoding.UTF8.GetString(body, offset, len);
+            offset += len;
+            return s;
+        }
+
         private static byte[] Encode_CSJOINGAME(CSJOINGAME m)
         {
             return Encoding.UTF8.GetBytes(m.PlayerName ?? string.Empty);
@@ -250,6 +307,65 @@ namespace GameClient
             m.PlayerId = BitConverter.ToInt32(body, 0);
             return m;
         }
+
+        private static byte[] Encode_CSCHAT(CSCHAT m)
+        {
+            return EncodeString(m.Msg);
+        }
+
+        private static CSCHAT Decode_CSCHAT(byte[] body)
+        {
+            int o = 0;
+            CSCHAT m;
+            m.Msg = DecodeString(body, ref o);
+            return m;
+        }
+
+        private static byte[] Encode_SCCHAT(SCCHAT m)
+        {
+            byte[] msgPart = EncodeString(m.Msg);
+            byte[] body = new byte[4 + msgPart.Length];
+
+            Buffer.BlockCopy(BitConverter.GetBytes(m.PlayerId), 0, body, 0, 4);
+            Buffer.BlockCopy(msgPart, 0, body, 4, msgPart.Length);
+            return body;
+        }
+
+        private static SCCHAT Decode_SCCHAT(byte[] body)
+        {
+            if (body.Length < 6) throw new ArgumentException("SC_CHAT body too short");
+
+            SCCHAT m;
+            m.PlayerId = BitConverter.ToInt32(body, 0);
+
+            int o = 4;
+            m.Msg = DecodeString(body, ref o);
+            return m;
+        }
+
+        private static byte[] Encode_SCLOGINRESULT(SCLOGINRESULT m)
+        {
+            byte[] body = new byte[16];
+            Array.Copy(BitConverter.GetBytes(m.PlayerId), 0, body, 0, 4);
+            Array.Copy(BitConverter.GetBytes(m.X), 0, body, 4, 4);
+            Array.Copy(BitConverter.GetBytes(m.Y), 0, body, 8, 4);
+            Array.Copy(BitConverter.GetBytes(m.Z), 0, body, 12, 4);
+            return body;
+        }
+
+        private static SCLOGINRESULT Decode_SCLOGINRESULT(byte[] body)
+        {
+            if (body.Length < 16)
+                throw new ArgumentException("SC_LOGIN_RESULT body too short");
+
+            SCLOGINRESULT m;
+            m.PlayerId = BitConverter.ToInt32(body, 0);
+            m.X = BitConverter.ToSingle(body, 4);
+            m.Y = BitConverter.ToSingle(body, 8);
+            m.Z = BitConverter.ToSingle(body, 12);
+            return m;
+        }
+
 
     }
 }

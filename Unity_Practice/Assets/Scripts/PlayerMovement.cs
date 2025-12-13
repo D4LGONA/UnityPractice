@@ -14,12 +14,23 @@ public class PlayerMovement : MonoBehaviour
     CharacterController controller;
     Vector3 velocity;   // y속도(중력/점프)만 여기서 관리
 
+    float h, v;      // x: 좌우(h), y: 전후(v)
+    bool jumpPressed;
+
     void Awake()
     {
         controller = GetComponent<CharacterController>();
+    }
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+    public void SetMoveInput(float h, float v)
+    {
+        this.h = h;
+        this.v = v;
+    }
+
+    public void PressJump()
+    {
+        jumpPressed = true;
     }
 
     void Update()
@@ -29,14 +40,6 @@ public class PlayerMovement : MonoBehaviour
 
     void Move()
     {
-        float h = 0f;
-        float v = 0f;
-
-        if (Input.GetKey(KeyCode.A)) h = -1f;
-        if (Input.GetKey(KeyCode.D)) h = 1f;
-        if (Input.GetKey(KeyCode.W)) v = 1f;
-        if (Input.GetKey(KeyCode.S)) v = -1f;
-
         Vector3 camForward = cameraTransform.forward;
         Vector3 camRight = cameraTransform.right;
         camForward.y = 0f;
@@ -45,19 +48,19 @@ public class PlayerMovement : MonoBehaviour
         camRight.Normalize();
 
         Vector3 moveDir = camRight * h + camForward * v;
-        if (moveDir.sqrMagnitude > 1f)
-            moveDir.Normalize();
+        if (moveDir.sqrMagnitude > 1f) moveDir.Normalize();
 
         Vector3 horizontalVelocity = moveDir * moveSpeed;
 
         if (controller.isGrounded)
         {
             if (velocity.y < 0f)
-                velocity.y = -2f; // 땅에 살짝 눌러주기
+                velocity.y = -2f;
 
-            if (Input.GetButtonDown("Jump")) // 기본: Space
+            if (jumpPressed)
             {
                 velocity.y = Mathf.Sqrt(jumpPower * -2f * gravity);
+                jumpPressed = false;
             }
         }
 

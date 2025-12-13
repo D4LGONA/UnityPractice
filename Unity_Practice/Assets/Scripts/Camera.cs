@@ -15,19 +15,28 @@ public class ThirdPersonCamera : MonoBehaviour
 
     void LateUpdate()
     {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        ApplyCamera();
+    }
 
-        currentYaw += mouseX;
-        currentPitch -= mouseY;
+    public void SetLookInput(float mouseX, float mouseY)
+    {
+        currentYaw += mouseX * mouseSensitivity;
+        currentPitch -= mouseY * mouseSensitivity;
         currentPitch = Mathf.Clamp(currentPitch, pitchMin, pitchMax);
 
+        ApplyCamera();
+    }
+
+    void ApplyCamera()
+    {
         Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
         Vector3 desiredPosition = target.position + rotation * offset;
 
         transform.position = desiredPosition;
         transform.LookAt(target);
 
+        // 캐릭터는 yaw만 따라가게
         target.rotation = Quaternion.Euler(0f, currentYaw, 0f);
     }
+
 }

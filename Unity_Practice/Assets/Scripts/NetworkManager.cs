@@ -1,4 +1,4 @@
-using GameClient;
+using PacketProtocol;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -14,13 +14,15 @@ public class NetworkClient : MonoBehaviour
     public string ServerIp = "127.0.0.1";
     public int ServerPort = 7777;
 
-    [Header("Player Prefab")]
     public GameObject remotePrefab;
-
     public GameObject MyPlayer;
+    public ChattingManager ChatManager;
 
     private readonly ConcurrentQueue<Action> _mainJobs = new ConcurrentQueue<Action>(); // 작업 큐
     private readonly Dictionary<int, RemotePlayerMove> _remotes = new Dictionary<int, RemotePlayerMove>(); // 현재 플레이어들
+
+    public string PlayerName = "Temp";
+    public int PlayerId = -1;
 
     void Update()
     {
@@ -67,6 +69,12 @@ public class NetworkClient : MonoBehaviour
         }
     }
 
+    public void SendChat(string Msg)
+    {
+        CSCHAT body = new CSCHAT { Msg = Msg };
+        byte[] packet = Protocol.Encode(PacketId.CS_CHAT, body);
+        _stream.Write(packet, 0, packet.Length); 
+    }
 
     private async Task ReceiveLoop()
     {
@@ -117,7 +125,18 @@ public class NetworkClient : MonoBehaviour
                         });
                         break;
                     }
-
+                    case PacketId.SC_LOGIN_RESULT:
+                    {
+                        var m = (SCLOGINRESULT)msg;
+                        PlayerId = m.PlayerId;
+                        break;
+                    }
+                    case PacketId.SC_CHAT:
+                    {
+                        var m = (SCCHAT)msg;
+                        ChatManager.RecvChat(m.PlayerId, m.Msg);
+                        break;
+                    }
                 }
             }
         }
