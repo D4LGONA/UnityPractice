@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Events;
 using PacketProtocol;
 
 namespace GameServer
@@ -23,12 +24,31 @@ namespace GameServer
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<int, ClientSession> _sessions = new();
         private int _sessionIdGen = 0;
+        private readonly ConcurrentPriorityQueue<Event> _eventQ = new();
 
         public Server(IPAddress ip, int port)
         {
             _listener = new TcpListener(ip, port);
         }
 
+        public void Schedule(uint delaySeconds, IEventTarget target, EventType type)
+        {
+            uint due = NowSeconds() + delaySeconds;
+            _eventQ.Enqueue(new Event(target, type), due);
+        }
+
+        private async Task EventLoopAsync()
+        {
+            while (true)
+            {
+                uint now = TimeUtil.NowSeconds();
+                while (_eventQ.TryDequeueReady(now, out var ev))
+                {
+                    ev.Target?.OnEvent(ev.Type);
+                }
+                await Task.Delay(10);
+            }
+        }
 
         public async Task StartAsync()
         {
@@ -47,6 +67,7 @@ namespace GameServer
                 Console.WriteLine($"Client {sessionId} connected");
 
                 _ = session.RunAsync(); // 세션 루프 비동기 실행
+                _ = Task.Run(() => EventLoopAsync()); // 이벤트 큐
             }
         }
 
